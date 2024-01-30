@@ -28,7 +28,7 @@ name: ci-cd
 
 on:
   push:
-    branches: [develop]
+    branches: [development]
 
 jobs:
   build-and-deploy:
