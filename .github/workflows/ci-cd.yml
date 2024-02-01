@@ -27,7 +27,7 @@ name: CICD
 
 on:
   push:
-    branches: [development]
+    branches: [develop]
 
 jobs:
   build-and-deploy:
@@ -51,7 +51,7 @@ jobs:
         id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: Reactapp-1
+          IMAGE_TAG: ${{ github.sha }}
           REPOSITORY: quizapp-japesh
         run: |
           # Build a docker container and
@@ -60,17 +60,24 @@ jobs:
           docker build -t $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG
           echo "image=$ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT    
+      
+      - name: Download task definition
+        run: |
+          aws ecs describe-task-definition --task-definition ${{ secrets.TASK_DEFINTION_NAME }} \
+          --query taskDefinition > task-definition.json
+     
       - name: Fill in the new image ID in the Amazon ECS task definition
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: quizzapp-japesh.json
+          task-definition: task-definition.json
           container-name: Reactapp
           image: ${{ steps.build-image.outputs.image }}    
+     
       - name: Deploy Amazon ECS task definition
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
           service: Reactapp-1
           cluster: quizzapp-uat-japesh
-          wait-for-service-stability: true
+          wait-for-service-stability: true  
